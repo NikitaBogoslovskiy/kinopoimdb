@@ -56,11 +56,13 @@ class MoviesRepository(context: Context) {
         })
     }
 
-    fun appendMovies(updateMoviesListCallback: () -> Unit,
+    fun appendMovies(disableLoadMoreProgressCallback: () -> Unit,
+                     updateMoviesListCallback: () -> Unit,
                      errorMessageCallback: (String) -> Unit) {
         appApiService.getMovies(currentSearch, portionSize, movies.size).enqueue(object : Callback<MutableList<MovieApi>> {
             override fun onFailure(call: Call<MutableList<MovieApi>>, t: Throwable) {
                 movies.clear()
+                disableLoadMoreProgressCallback.invoke()
                 updateMoviesListCallback.invoke()
                 errorMessageCallback.invoke("Oops... Connection failed")
             }
@@ -69,6 +71,7 @@ class MoviesRepository(context: Context) {
                 canLoadMore = movieApis.size == portionSize
                 for(movieApi in movieApis)
                     movies.add(Movie.fromApi(movieApi))
+                disableLoadMoreProgressCallback.invoke()
                 updateMoviesListCallback.invoke()
             }
         })

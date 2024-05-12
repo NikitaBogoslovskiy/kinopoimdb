@@ -13,6 +13,8 @@ class MoviesViewAdapter(private var movies: MutableList<Movie>) :
     RecyclerView.Adapter<MovieViewHolder>() {
 
     lateinit var errorMessageCallback: (String) -> Unit
+    lateinit var activateLoadMoreProgressCallback: () -> Unit
+    lateinit var disableLoadMoreProgressCallback: () -> Unit
 
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): MovieViewHolder {
         val view = LayoutInflater.from(viewGroup.context)
@@ -26,11 +28,12 @@ class MoviesViewAdapter(private var movies: MutableList<Movie>) :
         viewHolder.id = movies[position].id
         viewHolder.text.text = movies[position].title
         if (position == (movies.size - 1) && Dependencies.moviesRepository.canLoadMore) {
+            activateLoadMoreProgressCallback.invoke()
             Dependencies.moviesRepository.appendMovies(
+                disableLoadMoreProgressCallback = disableLoadMoreProgressCallback,
                 updateMoviesListCallback = { notifyDataSetChanged() },
                 errorMessageCallback = errorMessageCallback
             )
-
         }
     }
 
