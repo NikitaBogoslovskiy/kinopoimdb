@@ -17,18 +17,6 @@ class MoviesViewModel : ViewModel() {
     var moviesViewAdapter: MoviesViewAdapter
 
     init {
-        val movies = mutableListOf("Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3",
-            "Movie1", "Movie2", "Movie3")
         moviesViewAdapter = MoviesViewAdapter(Dependencies.moviesRepository.movies)
     }
 

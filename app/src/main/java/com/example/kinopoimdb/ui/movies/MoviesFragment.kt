@@ -36,9 +36,14 @@ class MoviesFragment : Fragment() {
         recyclerView = view.findViewById(R.id.movies_list)
         val moviesViewModel = ViewModelProvider(this)[MoviesViewModel::class.java]
         recyclerView.adapter = moviesViewModel.moviesViewAdapter
+        val messageTextView = view.findViewById<TextView>(R.id.message_text_view)
+        val errorMessageCallback = {it: String ->
+            messageTextView.text = it
+            messageTextView.visibility = View.VISIBLE
+        }
+        moviesViewModel.moviesViewAdapter.errorMessageCallback = errorMessageCallback
         view.findViewById<Button>(R.id.movie_search_button).setOnClickListener {
             val progressBar = view.findViewById<ProgressBar>(R.id.movies_search_progress)
-            val messageTextView = view.findViewById<TextView>(R.id.message_text_view)
             messageTextView.visibility = View.GONE
             moviesViewModel.findMovies(
                 activateProgressBarCallback = {
@@ -47,10 +52,7 @@ class MoviesFragment : Fragment() {
                 disableProgressBarCallback = {
                     progressBar.visibility = View.GONE
                 },
-                errorMessageCallback = {
-                    messageTextView.text = it
-                    messageTextView.visibility = View.VISIBLE
-                }
+                errorMessageCallback = errorMessageCallback
             )
         }
     }
