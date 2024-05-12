@@ -18,6 +18,10 @@ interface CharacterDao {
             "where t.movie_id = :movieId;")
     fun getById(movieId: Long): List<CharacterEntity>
 
+    @Query("delete from characters " +
+            "where movie_id in (:movieIds);")
+    fun deleteByIds(movieIds: List<Long>)
+
 /*    @Query("delete from movies " +
             "where id = :movieId;")
     fun deleteById(movieId: Long)*/

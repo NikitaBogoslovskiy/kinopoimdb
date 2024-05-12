@@ -3,7 +3,7 @@ package com.example.kinopoimdb.model.movie
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.sql.Date
+import java.util.Date
 import java.sql.Timestamp
 
 @Entity(tableName = "movies")
@@ -48,6 +48,6 @@ data class MovieEntity(
     @ColumnInfo(name = "vote_count")
     val voteCount: String,
 
-/*    @ColumnInfo(name = "create_date")
-    val createDate: Timestamp*/
+    @ColumnInfo(name = "expiring_at")
+    val expiringAt: Date
 )

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 @Dao
 interface MovieDao {
@@ -38,12 +39,18 @@ interface MovieDao {
             "t.movie_status, " +
             "t.tagline, " +
             "t.vote_average, " +
-            "t.vote_count " +
+            "t.vote_count, " +
+            "t.expiring_at " +
             "from movies t " +
             "where t.id = :movieId;")
     fun getById(movieId: Long): MovieEntity?
 
-/*    @Query("delete from movies " +
-            "where id = :movieId;")
-    fun deleteById(movieId: Long)*/
+    @Query("select t.id " +
+            "from movies t " +
+            "where t.expiring_at <= :currentDate;")
+    fun getExpiredIds(currentDate: Date): List<Long>
+
+    @Query("delete from movies " +
+            "where id in (:movieIds);")
+    fun deleteByIds(movieIds: List<Long>)
 }

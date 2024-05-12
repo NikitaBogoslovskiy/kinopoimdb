@@ -1,21 +1,37 @@
 package com.example.kinopoimdb
 
+import android.content.Context
 import android.os.Bundle
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.example.kinopoimdb.databinding.ActivityMainBinding
 import com.example.kinopoimdb.model.movie.MoviesRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Dependencies.sharedPreferences = getPreferences(Context.MODE_PRIVATE)
         Dependencies.moviesRepository = MoviesRepository.getRepository(applicationContext)
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                while (true) {
+                    Dependencies.moviesRepository.removeOldCache()
+                    delay(Dependencies.moviesRepository.cacheCheckFrequency)
+                }
+            }
+        }
+
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)

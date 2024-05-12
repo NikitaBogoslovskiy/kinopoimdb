@@ -10,6 +10,8 @@ import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.sql.Time
+import java.util.Date
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -21,21 +23,9 @@ class MoviesRepository(context: Context) {
 
     var movies = emptyList<Movie>().toMutableList()
     var movieDetails = emptyList<MovieDetail>().toMutableList()
-    private var movieToSave = ObservableField<Movie>()
     private var portionSize = 75
-
-    init {
-        movieToSave.addOnPropertyChangedCallback(object : androidx.databinding.Observable.OnPropertyChangedCallback() {
-            override fun onPropertyChanged(sender: androidx.databinding.Observable?, propertyId: Int) {
-                val entities = movieToSave.get()?.toEntities()
-                if (entities != null) {
-                    movieDao.insertNew(entities.first)
-                    if (entities.second != null)
-                        characterDao.insertNew(entities.second as List<CharacterEntity>)
-                }
-            }
-        })
-    }
+    var expirationPeriod: Long = 86400000
+    var cacheCheckFrequency: Long = 600000
 
     fun findMovies(disableProgressBarCallback: () -> Unit,
                    updateMoviesListCallback: () -> Unit,
@@ -104,7 +94,7 @@ class MoviesRepository(context: Context) {
                                  disableProgressBarCallback: () -> Unit,
                                  updateMovieDetailsCallback: () -> Unit,
                                  errorMessageCallback: (String) -> Unit): Movie {
-        val call = appApiService.getMovie(AppApi.getToken(), id)
+        val call = appApiService.getMovie(AppApi.getToken() ?: "", id)
         return suspendCoroutine { cont ->
             call.enqueue(object : Callback<MovieApi> {
                 override fun onFailure(call: Call<MovieApi>, t: Throwable) {
@@ -113,6 +103,7 @@ class MoviesRepository(context: Context) {
                 }
 
                 override fun onResponse(call: Call<MovieApi>, response: Response<MovieApi>) {
+                    if (response.code() == 401)
                     movieDetails.clear()
                     val movie = Movie.fromApi(response.body() as MovieApi)
                     movie.toMovieDetails().map {
@@ -145,6 +136,43 @@ class MoviesRepository(context: Context) {
         updateMovieDetailsCallback.invoke()
     }
 
+    fun removeOldCache() {
+        val ids = movieDao.getExpiredIds(Date())
+        movieDao.deleteByIds(ids)
+        characterDao.deleteByIds(ids)
+    }
+
+    private suspend fun findMovieWithApi(id: Long,
+                                         setTitleCallback: (String?) -> Unit,
+                                         disableProgressBarCallback: () -> Unit,
+                                         updateMovieDetailsCallback: () -> Unit,
+                                         errorMessageCallback: (String) -> Unit): Movie {
+        val call = appApiService.getMovie(AppApi.getToken() ?: "", id)
+        return suspendCoroutine { cont ->
+            call.enqueue(object : Callback<MovieApi> {
+                override fun onFailure(call: Call<MovieApi>, t: Throwable) {
+                    disableProgressBarCallback.invoke()
+                    errorMessageCallback.invoke("Oops... Connection failed")
+                }
+
+                override fun onResponse(call: Call<MovieApi>, response: Response<MovieApi>) {
+                    if (response.code() == 401)
+                        movieDetails.clear()
+                    val movie = Movie.fromApi(response.body() as MovieApi)
+                    movie.toMovieDetails().map {
+                        if (it.key == "Title")
+                            setTitleCallback.invoke(it.value)
+                        else
+                            movieDetails.add(MovieDetail(it.key, it.value))
+                    }
+                    disableProgressBarCallback.invoke()
+                    updateMovieDetailsCallback.invoke()
+                    cont.resume(movie)
+                }
+            })
+        }
+    }
+
     companion object {
         @Volatile
         private var instance: MoviesRepository? = null
@@ -160,29 +188,4 @@ class MoviesRepository(context: Context) {
             }
         }
     }
-
-/*    suspend fun load() {
-        itemsFlow.collect {
-            items.clear()
-            it.map { entity -> items.add(Item.fromEntity(entity)) }
-            overallItems.set(items.size)
-            checkedItems.set(items.filter { item -> item.isDone }.size)
-        }
-    }
-
-    fun get(id: Long): Item? {
-        return items.find { it.id == id }
-    }
-
-    fun insert(item: Item) {
-        itemDao.insertNew(item.toEntity())
-    }
-
-    fun delete(itemId: Long) {
-        itemDao.deleteById(itemId)
-    }
-
-    fun changeStatus(itemId: Long, newStatus: Boolean) {
-        itemDao.changeStatusById(itemId, newStatus)
-    }*/
 }

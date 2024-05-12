@@ -1,5 +1,8 @@
 package com.example.kinopoimdb.model.movie
 
+import com.example.kinopoimdb.Dependencies
+import java.util.Date
+
 data class MovieDetail(val key: String, val value: String)
 
 class Character(
@@ -66,6 +69,7 @@ class Movie(
             tagline = tagline ?: "",
             voteAverage = voteAverage ?: "",
             voteCount = voteCount ?: "",
+            expiringAt = Date(Date().time + Dependencies.moviesRepository.expirationPeriod)
         ),
         characters?.map { CharacterEntity(0, id, it.actorName, it.characterName) }
     )
