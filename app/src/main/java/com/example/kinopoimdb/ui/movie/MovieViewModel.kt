@@ -2,8 +2,12 @@ package com.example.kinopoimdb.ui.movie
 
 import android.annotation.SuppressLint
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.kinopoimdb.Dependencies
 import com.example.kinopoimdb.ui.movie.adapter.MovieDetailsViewAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MovieViewModel : ViewModel() {
     var movieDetailsViewAdapter = MovieDetailsViewAdapter(Dependencies.moviesRepository.movieDetails)
@@ -17,14 +21,18 @@ class MovieViewModel : ViewModel() {
         Dependencies.moviesRepository.movieDetails.clear()
         movieDetailsViewAdapter.notifyDataSetChanged()
         activateProgressBarCallback.invoke()
-        Dependencies.moviesRepository.findMovie(
-            id = id,
-            setTitleCallback = setTitleCallback,
-            disableProgressBarCallback = disableProgressBarCallback,
-            updateMovieDetailsCallback = {
-                movieDetailsViewAdapter.notifyDataSetChanged()
-            },
-            errorMessageCallback = errorMessageCallback
-        )
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                Dependencies.moviesRepository.findMovie(
+                    id = id,
+                    setTitleCallback = setTitleCallback,
+                    disableProgressBarCallback = disableProgressBarCallback,
+                    updateMovieDetailsCallback = {
+                        movieDetailsViewAdapter.notifyDataSetChanged()
+                    },
+                    errorMessageCallback = errorMessageCallback
+                )
+            }
+        }
     }
 }

@@ -4,17 +4,21 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.kinopoimdb.model.movie.CharacterDao
+import com.example.kinopoimdb.model.movie.CharacterEntity
 import com.example.kinopoimdb.model.movie.MovieDao
 import com.example.kinopoimdb.model.movie.MovieEntity
 
 @Database(
     version = 1,
     entities = [
-        MovieEntity::class
+        MovieEntity::class,
+        CharacterEntity::class
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getMovieDao(): MovieDao
+    abstract fun getCharacterDao(): CharacterDao
 
     companion object {
         @Volatile

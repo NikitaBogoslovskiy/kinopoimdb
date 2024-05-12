@@ -1,6 +1,7 @@
 package com.example.kinopoimdb.model.api
 
 import com.example.kinopoimdb.model.movie.Movie
+import com.example.kinopoimdb.model.movie.MovieApi
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -30,8 +31,8 @@ object AppApi {
 
 interface AppApiServices {
     @GET("movies")
-    fun getMovies(@Query("count") count: Int, @Query("offset") offset: Int): Call<MutableList<Movie>>
+    fun getMovies(@Query("count") count: Int, @Query("offset") offset: Int): Call<MutableList<MovieApi>>
 
     @GET("movies/{id}")
-    fun getMovie(@Header("Authorization") token: String, @Path("id") id: Long): Call<Movie>
+    fun getMovie(@Header("Authorization") token: String, @Path("id") id: Long): Call<MovieApi>
 }

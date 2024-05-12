@@ -3,6 +3,8 @@ package com.example.kinopoimdb.model.movie
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.sql.Date
+import java.sql.Timestamp
 
 @Entity(tableName = "movies")
 data class MovieEntity(
@@ -44,5 +46,8 @@ data class MovieEntity(
     val voteAverage: String,
 
     @ColumnInfo(name = "vote_count")
-    val voteCount: String
+    val voteCount: String,
+
+/*    @ColumnInfo(name = "create_date")
+    val createDate: Timestamp*/
 )

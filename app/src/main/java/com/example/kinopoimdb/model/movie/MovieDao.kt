@@ -10,7 +10,7 @@ interface MovieDao {
     @Insert(entity = MovieEntity::class)
     fun insertNew(movie: MovieEntity)
 
-    @Query("select t.id, " +
+/*    @Query("select t.id, " +
             "t.title, " +
             "t.budget, " +
             "t.homepage, " +
@@ -24,7 +24,7 @@ interface MovieDao {
             "t.vote_average, " +
             "t.vote_count " +
             "from movies t;")
-    fun getAll(): Flow<List<MovieEntity>>
+    fun getAll(): Flow<List<MovieEntity>>*/
 
     @Query("select t.id, " +
             "t.title, " +
@@ -41,9 +41,9 @@ interface MovieDao {
             "t.vote_count " +
             "from movies t " +
             "where t.id = :movieId;")
-    fun getById(movieId: Long): Flow<MovieEntity>
+    fun getById(movieId: Long): MovieEntity?
 
-    @Query("delete from movies " +
+/*    @Query("delete from movies " +
             "where id = :movieId;")
-    fun deleteById(movieId: Long)
+    fun deleteById(movieId: Long)*/
 }
