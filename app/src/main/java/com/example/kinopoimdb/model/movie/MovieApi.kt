@@ -27,3 +27,5 @@ data class MovieApi(
     val voteAverage: String? = null,
     val voteCount: String? = null,
     val persons: List<PersonApi>? = null)
+
+data class TokenApi(val content: String?)

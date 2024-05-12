@@ -25,7 +25,7 @@ class MoviesViewAdapter(private var movies: MutableList<Movie>) :
     override fun onBindViewHolder(viewHolder: MovieViewHolder, position: Int) {
         viewHolder.id = movies[position].id
         viewHolder.text.text = movies[position].title
-        if (position == (movies.size - 2)) {
+        if (position == (movies.size - 1) && Dependencies.moviesRepository.canLoadMore) {
             Dependencies.moviesRepository.appendMovies(
                 updateMoviesListCallback = { notifyDataSetChanged() },
                 errorMessageCallback = errorMessageCallback

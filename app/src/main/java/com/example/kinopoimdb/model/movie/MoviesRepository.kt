@@ -1,6 +1,7 @@
 package com.example.kinopoimdb.model.movie
 
 import android.content.Context
+import android.util.Log
 import androidx.databinding.ObservableField
 import com.example.kinopoimdb.model.api.AppApi
 import com.example.kinopoimdb.model.api.AppApiServices
@@ -15,29 +16,39 @@ import java.util.Date
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
+
+enum class ApiCallStatus {
+    TokenExpired, ConnectionFailed, Success
+}
+data class ApiCallResult(var status: ApiCallStatus, var movie: Movie?)
+
 class MoviesRepository(context: Context) {
     private val movieDao = AppDatabase.getDatabase(context).getMovieDao()
     private val characterDao = AppDatabase.getDatabase(context).getCharacterDao()
     private val appApiService: AppApiServices
         get() = AppApi.getClient().create(AppApiServices::class.java)
+    private var portionSize = 75
 
     var movies = emptyList<Movie>().toMutableList()
     var movieDetails = emptyList<MovieDetail>().toMutableList()
-    private var portionSize = 75
     var expirationPeriod: Long = 86400000
     var cacheCheckFrequency: Long = 600000
+    var currentSearch: String = ""
+    var canLoadMore = true
 
     fun findMovies(disableProgressBarCallback: () -> Unit,
                    updateMoviesListCallback: () -> Unit,
                    errorMessageCallback: (String) -> Unit) {
-        appApiService.getMovies(portionSize, 0).enqueue(object : Callback<MutableList<MovieApi>> {
+        appApiService.getMovies(currentSearch, portionSize, 0).enqueue(object : Callback<MutableList<MovieApi>> {
             override fun onFailure(call: Call<MutableList<MovieApi>>, t: Throwable) {
                 disableProgressBarCallback.invoke()
                 errorMessageCallback.invoke("Oops... Connection failed")
             }
             override fun onResponse(call: Call<MutableList<MovieApi>>, response: Response<MutableList<MovieApi>>) {
                 movies.clear()
-                for(movieApi in response.body() as MutableList<MovieApi>)
+                val movieApis = response.body() as MutableList<MovieApi>
+                canLoadMore = movieApis.size == portionSize
+                for(movieApi in movieApis)
                     movies.add(Movie.fromApi(movieApi))
                 disableProgressBarCallback.invoke()
                 updateMoviesListCallback.invoke()
@@ -47,14 +58,16 @@ class MoviesRepository(context: Context) {
 
     fun appendMovies(updateMoviesListCallback: () -> Unit,
                      errorMessageCallback: (String) -> Unit) {
-        appApiService.getMovies(portionSize, movies.size).enqueue(object : Callback<MutableList<MovieApi>> {
+        appApiService.getMovies(currentSearch, portionSize, movies.size).enqueue(object : Callback<MutableList<MovieApi>> {
             override fun onFailure(call: Call<MutableList<MovieApi>>, t: Throwable) {
                 movies.clear()
                 updateMoviesListCallback.invoke()
                 errorMessageCallback.invoke("Oops... Connection failed")
             }
             override fun onResponse(call: Call<MutableList<MovieApi>>, response: Response<MutableList<MovieApi>>) {
-                for(movieApi in response.body() as MutableList<MovieApi>)
+                val movieApis = response.body() as MutableList<MovieApi>
+                canLoadMore = movieApis.size == portionSize
+                for(movieApi in movieApis)
                     movies.add(Movie.fromApi(movieApi))
                 updateMoviesListCallback.invoke()
             }
@@ -75,10 +88,12 @@ class MoviesRepository(context: Context) {
                 updateMovieDetailsCallback,
                 errorMessageCallback
             )
-            val entities = movie.toEntities()
-            movieDao.insertNew(entities.first)
-            if (entities.second != null)
-                characterDao.insertNew(entities.second as List<CharacterEntity>)
+            if (movie != null) {
+                val entities = movie.toEntities()
+                movieDao.insertNew(entities.first)
+                if (entities.second != null)
+                    characterDao.insertNew(entities.second as List<CharacterEntity>)
+            }
         } else {
             findMovieWithDb(
                 movieEntity,
@@ -93,30 +108,29 @@ class MoviesRepository(context: Context) {
                                  setTitleCallback: (String?) -> Unit,
                                  disableProgressBarCallback: () -> Unit,
                                  updateMovieDetailsCallback: () -> Unit,
-                                 errorMessageCallback: (String) -> Unit): Movie {
+                                 errorMessageCallback: (String) -> Unit): Movie? {
         val call = appApiService.getMovie(AppApi.getToken() ?: "", id)
-        return suspendCoroutine { cont ->
-            call.enqueue(object : Callback<MovieApi> {
-                override fun onFailure(call: Call<MovieApi>, t: Throwable) {
-                    disableProgressBarCallback.invoke()
-                    errorMessageCallback.invoke("Oops... Connection failed")
-                }
-
-                override fun onResponse(call: Call<MovieApi>, response: Response<MovieApi>) {
-                    if (response.code() == 401)
-                    movieDetails.clear()
-                    val movie = Movie.fromApi(response.body() as MovieApi)
-                    movie.toMovieDetails().map {
-                        if (it.key == "Title")
-                            setTitleCallback.invoke(it.value)
-                        else
-                            movieDetails.add(MovieDetail(it.key, it.value))
-                    }
-                    disableProgressBarCallback.invoke()
-                    updateMovieDetailsCallback.invoke()
-                    cont.resume(movie)
-                }
-            })
+        val result = runApiCall(
+            call,
+            setTitleCallback,
+            disableProgressBarCallback,
+            updateMovieDetailsCallback,
+            errorMessageCallback
+        )
+        when(result.status) {
+            ApiCallStatus.TokenExpired -> {
+                updateToken()
+                return runApiCall(
+                    appApiService.getMovie(AppApi.getToken() ?: "", id),
+                    setTitleCallback,
+                    disableProgressBarCallback,
+                    updateMovieDetailsCallback,
+                    errorMessageCallback
+                ).movie
+            }
+            else -> {
+                return result.movie
+            }
         }
     }
 
@@ -142,22 +156,41 @@ class MoviesRepository(context: Context) {
         characterDao.deleteByIds(ids)
     }
 
-    private suspend fun findMovieWithApi(id: Long,
-                                         setTitleCallback: (String?) -> Unit,
-                                         disableProgressBarCallback: () -> Unit,
-                                         updateMovieDetailsCallback: () -> Unit,
-                                         errorMessageCallback: (String) -> Unit): Movie {
-        val call = appApiService.getMovie(AppApi.getToken() ?: "", id)
+    private suspend fun updateToken(): Boolean {
+        val call = appApiService.auth(AppApi.getCredentials())
+        return suspendCoroutine { cont ->
+            call.enqueue(object : Callback<TokenApi> {
+                override fun onFailure(call: Call<TokenApi>, t: Throwable) {
+                    cont.resume(false)
+                }
+                override fun onResponse(call: Call<TokenApi>, response: Response<TokenApi>) {
+                    Log.i("Info", "Booba")
+                    AppApi.setToken((response.body() as TokenApi).content ?: "")
+                    cont.resume(true)
+                }
+            })
+        }
+    }
+
+    private suspend fun runApiCall(call: Call<MovieApi>,
+                                   setTitleCallback: (String?) -> Unit,
+                                   disableProgressBarCallback: () -> Unit,
+                                   updateMovieDetailsCallback: () -> Unit,
+                                   errorMessageCallback: (String) -> Unit): ApiCallResult {
         return suspendCoroutine { cont ->
             call.enqueue(object : Callback<MovieApi> {
                 override fun onFailure(call: Call<MovieApi>, t: Throwable) {
                     disableProgressBarCallback.invoke()
                     errorMessageCallback.invoke("Oops... Connection failed")
+                    cont.resume(ApiCallResult(ApiCallStatus.ConnectionFailed, null))
                 }
 
                 override fun onResponse(call: Call<MovieApi>, response: Response<MovieApi>) {
-                    if (response.code() == 401)
-                        movieDetails.clear()
+                    if (response.code() == 401) {
+                        cont.resume(ApiCallResult(ApiCallStatus.TokenExpired, null))
+                        return
+                    }
+                    movieDetails.clear()
                     val movie = Movie.fromApi(response.body() as MovieApi)
                     movie.toMovieDetails().map {
                         if (it.key == "Title")
@@ -167,7 +200,7 @@ class MoviesRepository(context: Context) {
                     }
                     disableProgressBarCallback.invoke()
                     updateMovieDetailsCallback.invoke()
-                    cont.resume(movie)
+                    cont.resume(ApiCallResult(ApiCallStatus.Success, movie))
                 }
             })
         }

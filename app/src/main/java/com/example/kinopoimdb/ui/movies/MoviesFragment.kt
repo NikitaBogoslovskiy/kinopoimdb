@@ -6,11 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
+import com.example.kinopoimdb.Dependencies
 import com.example.kinopoimdb.R
 import com.example.kinopoimdb.databinding.FragmentMoviesBinding
 import com.example.kinopoimdb.ui.persons.PersonsViewModel
@@ -45,6 +47,8 @@ class MoviesFragment : Fragment() {
         view.findViewById<Button>(R.id.movie_search_button).setOnClickListener {
             val progressBar = view.findViewById<ProgressBar>(R.id.movies_search_progress)
             messageTextView.visibility = View.GONE
+            Dependencies.moviesRepository.currentSearch =
+                view.findViewById<EditText>(R.id.movie_title_input_field).text.toString()
             moviesViewModel.findMovies(
                 activateProgressBarCallback = {
                     progressBar.visibility = View.VISIBLE
