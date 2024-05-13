@@ -4,6 +4,7 @@ import com.example.kinopoimdb.Dependencies
 import com.example.kinopoimdb.model.movie.Movie
 import com.example.kinopoimdb.model.movie.MovieApi
 import com.example.kinopoimdb.model.movie.TokenApi
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -45,6 +46,14 @@ object AppApi {
         val password = Dependencies.sharedPreferences.getString("password", null)
         return Credentials(login, password)
     }
+
+    fun setCredentials(credentials: Credentials) {
+        with(Dependencies.sharedPreferences.edit()) {
+            putString("login", credentials.login)
+            putString("password", credentials.password)
+            apply()
+        }
+    }
 }
 
 interface AppApiServices {
@@ -56,4 +65,7 @@ interface AppApiServices {
 
     @POST("auth")
     fun auth(@Body credentials: Credentials): Call<TokenApi>
+
+    @POST("register")
+    fun register(@Body credentials: Credentials): Call<ResponseBody>
 }

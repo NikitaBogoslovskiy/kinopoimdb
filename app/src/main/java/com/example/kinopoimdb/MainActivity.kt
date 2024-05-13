@@ -2,6 +2,7 @@ package com.example.kinopoimdb
 
 import android.content.Context
 import android.os.Bundle
+import android.provider.Settings
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -15,14 +16,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.security.AccessController
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Dependencies.androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         Dependencies.sharedPreferences = getPreferences(Context.MODE_PRIVATE)
         Dependencies.moviesRepository = MoviesRepository.getRepository(applicationContext)
+        Dependencies.moviesRepository.tryRegisterCredentials()
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 while (true) {

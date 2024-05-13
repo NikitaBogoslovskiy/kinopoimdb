@@ -1,18 +1,23 @@
 package com.example.kinopoimdb.model.movie
 
 import android.content.Context
+import android.provider.Settings
 import android.util.Log
 import androidx.databinding.ObservableField
+import com.example.kinopoimdb.Dependencies
 import com.example.kinopoimdb.model.api.AppApi
 import com.example.kinopoimdb.model.api.AppApiServices
 import com.example.kinopoimdb.model.database.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.security.AccessController.getContext
 import java.sql.Time
 import java.util.Date
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -157,6 +162,21 @@ class MoviesRepository(context: Context) {
         val ids = movieDao.getExpiredIds(Date())
         movieDao.deleteByIds(ids)
         characterDao.deleteByIds(ids)
+    }
+
+    fun tryRegisterCredentials() {
+        val credentials = AppApi.getCredentials()
+        if (credentials.login != null && credentials.password != null)
+            return
+        credentials.login = Dependencies.androidId + "-" + UUID.randomUUID().toString()
+        credentials.password = UUID.randomUUID().toString()
+        val call = appApiService.register(credentials)
+        call.enqueue(object : Callback<ResponseBody> {
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {}
+            override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                AppApi.setCredentials(credentials)
+            }
+        })
     }
 
     private suspend fun updateToken(): Boolean {
